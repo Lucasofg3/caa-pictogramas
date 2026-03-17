@@ -3,6 +3,8 @@ import json
 import re
 import tempfile
 import unicodedata
+import textwrap
+import base64
 from copy import deepcopy
 from typing import List, Dict, Any
 from pathlib import Path
@@ -987,32 +989,34 @@ def render_hero():
 
     if logo_path.exists():
         svg_content = logo_path.read_bytes()
-        b64 = base64.b64encode(svg_content).decode()
+        b64 = base64.b64encode(svg_content).decode("utf-8")
 
-        logo_html = f"""
-        <div class="hero-logo">
-            <img src="data:image/svg+xml;base64,{b64}" alt="Logo">
-        </div>
-        """
+        logo_html = textwrap.dedent(f"""
+            <div class="hero-logo">
+                <img src="data:image/svg+xml;base64,{b64}" alt="Logo">
+            </div>
+        """)
 
-    st.markdown(f"""
-    <div class="hero-wrap">
-        {logo_html}
-        <div class="hero-content">
-            <div class="hero-title">{APP_TITLE}</div>
-            <div class="hero-subtitle">
-                Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
-                ampliando a compreensão e preservando a autonomia pedagógica do professor.
-            </div>
-            <div class="hero-pills">
-                <div class="hero-pill">CAA</div>
-                <div class="hero-pill">Pictogramas</div>
-                <div class="hero-pill">Português + Inglês + Espanhol</div>
-                <div class="hero-pill">PDF / HTML / JSON</div>
+    html = textwrap.dedent(f"""
+        <div class="hero-wrap">
+            {logo_html}
+            <div class="hero-content">
+                <div class="hero-title">{APP_TITLE}</div>
+                <div class="hero-subtitle">
+                    Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
+                    ampliando a compreensão e preservando a autonomia pedagógica do professor.
+                </div>
+                <div class="hero-pills">
+                    <div class="hero-pill">CAA</div>
+                    <div class="hero-pill">Pictogramas</div>
+                    <div class="hero-pill">Português + Inglês + Espanhol</div>
+                    <div class="hero-pill">PDF / HTML / JSON</div>
+                </div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    """)
+
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def render_kpis(templates, favorites, history):
