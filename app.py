@@ -5,6 +5,7 @@ import tempfile
 import unicodedata
 from copy import deepcopy
 from typing import List, Dict, Any
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -36,13 +37,13 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main > div {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
+        padding-top: 1.2rem;
+        padding-bottom: 2.2rem;
     }
 
     .block-container {
-        max-width: 1180px;
-        padding-top: 1rem;
+        max-width: 1220px;
+        padding-top: 0.8rem;
         padding-bottom: 3rem;
     }
 
@@ -50,76 +51,164 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
 
-    .hero-card {
-        background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #0EA5E9 100%);
+    .hero-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 50%, #0EA5E9 100%);
         color: white;
-        padding: 2rem 2rem 1.6rem 2rem;
-        border-radius: 24px;
-        box-shadow: 0 16px 40px rgba(37, 99, 235, 0.22);
-        margin-bottom: 1.25rem;
+        padding: 1.8rem 2rem;
+        border-radius: 28px;
+        box-shadow: 0 18px 45px rgba(29, 78, 216, 0.24);
+        margin-bottom: 1rem;
+    }
+
+    .hero-logo {
+        width: 78px;
+        height: 78px;
+        flex-shrink: 0;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 22px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(6px);
+    }
+
+    .hero-logo img {
+        width: 100%;
+        height: auto;
+    }
+
+    .hero-content {
+        flex: 1;
     }
 
     .hero-title {
-        font-size: 2.1rem;
+        font-size: 2.15rem;
         font-weight: 800;
+        line-height: 1.05;
         margin-bottom: 0.45rem;
-        line-height: 1.1;
     }
 
     .hero-subtitle {
         font-size: 1rem;
-        opacity: 0.95;
-        max-width: 780px;
         line-height: 1.5;
+        max-width: 820px;
+        opacity: 0.96;
+    }
+
+    .hero-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.95rem;
+    }
+
+    .hero-pill {
+        background: rgba(255,255,255,0.16);
+        border: 1px solid rgba(255,255,255,0.24);
+        color: white;
+        padding: 0.42rem 0.78rem;
+        border-radius: 999px;
+        font-size: 0.84rem;
+        font-weight: 700;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-card {
+        background: white;
+        border: 1px solid #D8E5FF;
+        border-radius: 22px;
+        padding: 1rem 1rem 0.95rem 1rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .kpi-label {
+        color: #64748B;
+        font-size: 0.84rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+
+    .kpi-value {
+        color: #0F172A;
+        font-size: 1.4rem;
+        font-weight: 800;
+        line-height: 1.05;
+    }
+
+    .kpi-desc {
+        color: #64748B;
+        font-size: 0.84rem;
+        margin-top: 0.28rem;
     }
 
     .section-card {
         background: #ffffff;
-        border: 1px solid #dbe7ff;
-        border-radius: 22px;
+        border: 1px solid #DCE8FF;
+        border-radius: 24px;
         padding: 1.25rem 1.25rem 1rem 1.25rem;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
         margin-bottom: 1rem;
     }
 
     .section-title {
-        font-size: 1.15rem;
-        font-weight: 700;
+        font-size: 1.12rem;
+        font-weight: 800;
         color: #0F172A;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.25rem;
     }
 
     .section-subtitle {
         font-size: 0.94rem;
         color: #475569;
-        margin-bottom: 0.9rem;
-    }
-
-    .pill-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 0.9rem;
-    }
-
-    .pill {
-        background: rgba(255,255,255,0.18);
-        border: 1px solid rgba(255,255,255,0.28);
-        color: white;
-        padding: 0.4rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 600;
+        margin-bottom: 0.25rem;
     }
 
     .info-banner {
-        background: linear-gradient(90deg, #EFF6FF 0%, #F8FAFF 100%);
+        background: linear-gradient(90deg, #EFF6FF 0%, #F8FBFF 100%);
         border: 1px solid #BFDBFE;
         border-radius: 18px;
         padding: 0.95rem 1rem;
         color: #1E3A8A;
         font-size: 0.95rem;
         margin-bottom: 1rem;
+    }
+
+    .segment-chip {
+        display: inline-block;
+        background: #DBEAFE;
+        color: #1D4ED8;
+        border-radius: 999px;
+        padding: 0.26rem 0.62rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin-bottom: 0.45rem;
+    }
+
+    .preview-panel {
+        background: white;
+        border: 1px solid #DCE8FF;
+        border-radius: 22px;
+        padding: 1rem;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .export-panel {
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%);
+        border: 1px solid #DCE8FF;
+        border-radius: 22px;
+        padding: 1rem;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
     }
 
     .small-muted {
@@ -129,15 +218,17 @@ st.markdown("""
 
     div[data-testid="stButton"] > button {
         border-radius: 14px !important;
-        border: 1px solid #c7d7fe !important;
-        min-height: 2.8rem !important;
-        font-weight: 600 !important;
+        border: 1px solid #CFE0FF !important;
+        min-height: 2.85rem !important;
+        font-weight: 700 !important;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.06);
     }
 
     div[data-testid="stDownloadButton"] > button {
         border-radius: 14px !important;
-        min-height: 2.8rem !important;
-        font-weight: 700 !important;
+        min-height: 2.85rem !important;
+        font-weight: 800 !important;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.06);
     }
 
     div[data-testid="stTextInput"] input,
@@ -149,30 +240,46 @@ st.markdown("""
 
     div[data-testid="stExpander"] details {
         border-radius: 18px !important;
-        border: 1px solid #dbe7ff !important;
+        border: 1px solid #DCE8FF !important;
         background: white !important;
     }
 
-    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {
-        gap: 0.35rem;
+    @media (max-width: 992px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 768px) {
-        .hero-card {
-            padding: 1.4rem 1.2rem;
-            border-radius: 18px;
+        .hero-wrap {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 1.3rem 1.15rem;
+            border-radius: 20px;
         }
 
         .hero-title {
-            font-size: 1.6rem;
+            font-size: 1.7rem;
         }
 
         .hero-subtitle {
             font-size: 0.95rem;
         }
 
-        .section-card {
-            border-radius: 16px;
+        .hero-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+        }
+
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .section-card,
+        .preview-panel,
+        .export-panel {
+            border-radius: 18px;
             padding: 0.95rem;
         }
     }
@@ -872,26 +979,71 @@ def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) ->
             except Exception:
                 pass
 
+def render_hero():
+    logo_path = Path("assets/logo.svg")
+    logo_html = ""
+    if logo_path.exists():
+        logo_html = f"""
+        <div class="hero-logo">
+            <img src="data:image/svg+xml;utf8,{logo_path.read_text(encoding='utf-8')}" alt="Logo">
+        </div>
+        """
+
+    st.markdown(f"""
+    <div class="hero-wrap">
+        {logo_html}
+        <div class="hero-content">
+            <div class="hero-title">{APP_TITLE}</div>
+            <div class="hero-subtitle">
+                Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
+                ampliando a compreensão e preservando a autonomia pedagógica do professor.
+            </div>
+            <div class="hero-pills">
+                <div class="hero-pill">CAA</div>
+                <div class="hero-pill">Pictogramas</div>
+                <div class="hero-pill">Português + Inglês + Espanhol</div>
+                <div class="hero-pill">PDF / HTML / JSON</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_kpis(templates, favorites, history):
+    st.markdown(f"""
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Modelos salvos</div>
+            <div class="kpi-value">{len(templates)}</div>
+            <div class="kpi-desc">Estruturas prontas para reutilização</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Favoritos</div>
+            <div class="kpi-value">{len(favorites)}</div>
+            <div class="kpi-desc">Pictogramas priorizados</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Histórico</div>
+            <div class="kpi-value">{len(history)}</div>
+            <div class="kpi-desc">Buscas recentes registradas</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Idiomas de busca</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-desc">Português, inglês e espanhol</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =========================
 # INTERFACE
 # =========================
 
-st.markdown(f"""
-<div class="hero-card">
-    <div class="hero-title">{APP_TITLE}</div>
-    <div class="hero-subtitle">
-        Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
-        ampliando a compreensão e preservando a autonomia pedagógica do professor.
-    </div>
-    <div class="pill-row">
-        <div class="pill">CAA</div>
-        <div class="pill">Pictogramas</div>
-        <div class="pill">Português + Inglês + Espanhol</div>
-        <div class="pill">PDF / HTML / JSON</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+render_hero()
+templates = load_templates()
+favorites = load_favorites()
+history = load_search_history()
+render_kpis(templates, favorites, history)
 
 templates = load_templates()
 favorites = load_favorites()
@@ -1006,8 +1158,9 @@ if "segments" in st.session_state:
 
     for idx, seg in enumerate(segments):
         with st.container(border=True):
-            st.markdown(f"### Segmento {idx + 1}")
-            st.caption(f"Original: {seg['original_text']}")
+st.markdown(f"<div class='segment-chip'>Segmento {idx + 1}</div>", unsafe_allow_html=True)
+st.markdown(f"### {seg.get('display_text', seg['original_text'])}")
+st.caption(f"Original: {seg['original_text']}")
 
             display_text = st.text_input(
                 "Texto exibido",
@@ -1165,7 +1318,7 @@ if "segments" in st.session_state:
     st.markdown("**Estrutura textual final**")
     st.write(preview_text if preview_text else "_Nenhum segmento visível na saída final._")
 
-    st.markdown("**Prévia visual**")
+    st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
     visible_segments = [seg for seg in edited_segments if segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))[1]]
 
     for start in range(0, len(visible_segments), 2):
@@ -1206,6 +1359,8 @@ if "segments" in st.session_state:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
 
     save_col, export_col1, export_col2 = st.columns(3)
 
@@ -1271,9 +1426,4 @@ if "segments" in st.session_state:
         )
 
 st.divider()
-st.markdown("""
-<div class="small-muted">
-    Plataforma em evolução para produção de materiais acessíveis com pictogramas, busca multilíngue
-    e exportação pedagógica em múltiplos formatos.
-</div>
-""", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
