@@ -1,10 +1,12 @@
 import os
 import json
 import re
+import tempfile
+import unicodedata
 from copy import deepcopy
 from typing import List, Dict, Any
-from io import BytesIO
 
+import requests
 import streamlit as st
 from dotenv import load_dotenv
 from fpdf import FPDF
@@ -24,7 +26,12 @@ from utils.storage import (
 load_dotenv()
 APP_TITLE = os.getenv("APP_TITLE", "Gerador de Materiais com Pictogramas")
 
-st.set_page_config(page_title=APP_TITLE, page_icon="🧩", layout="wide")
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon="🧩",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 STOPWORDS = {
     "a", "o", "as", "os", "de", "da", "do", "das", "dos",
@@ -90,6 +97,10 @@ SEARCH_HINTS = {
     "sala": {"en": ["classroom", "room"], "es": ["aula", "sala"]},
 }
 
+
+# =========================
+# FUNÇÕES AUXILIARES
+# =========================
 
 def normalize_text(text: str) -> str:
     text = text.lower().strip()
@@ -171,8 +182,7 @@ def build_segments(text: str) -> List[Dict[str, Any]]:
                 "pictogram_options": [],
                 "selected_pictogram_ids": [],
                 "selected_pictograms": [],
-                "keep_text": True,
-                "visible": True,
+                "segment_mode": "Texto + pictograma",
                 "fetch_error": "",
             })
             i += matched_len
@@ -190,8 +200,7 @@ def build_segments(text: str) -> List[Dict[str, Any]]:
                 "pictogram_options": [],
                 "selected_pictogram_ids": [],
                 "selected_pictograms": [],
-                "keep_text": True,
-                "visible": True,
+                "segment_mode": "Texto apenas",
                 "fetch_error": "",
             })
             i += 1
@@ -213,8 +222,7 @@ def build_segments(text: str) -> List[Dict[str, Any]]:
                 "pictogram_options": [],
                 "selected_pictogram_ids": [],
                 "selected_pictograms": [],
-                "keep_text": True,
-                "visible": True,
+                "segment_mode": "Texto + pictograma",
                 "fetch_error": "",
             })
         else:
@@ -227,8 +235,7 @@ def build_segments(text: str) -> List[Dict[str, Any]]:
                 "pictogram_options": [],
                 "selected_pictogram_ids": [],
                 "selected_pictograms": [],
-                "keep_text": True,
-                "visible": True,
+                "segment_mode": "Texto apenas",
                 "fetch_error": "",
             })
 
@@ -293,23 +300,36 @@ def fetch_options_for_segments(segments: List[Dict[str, Any]]) -> List[Dict[str,
     return [fetch_options_for_segment(dict(seg)) for seg in segments]
 
 
+def segment_mode_to_flags(mode: str) -> tuple[bool, bool]:
+    if mode == "Texto apenas":
+        return True, True
+    if mode == "Texto + pictograma":
+        return True, True
+    if mode == "Pictograma apenas":
+        return False, True
+    if mode == "Ocultar":
+        return False, False
+    return True, True
+
+
 def render_phrase_preview(segments: List[Dict[str, Any]]) -> str:
     parts = []
 
     for seg in segments:
-        if not seg.get("visible", True):
+        keep_text, visible = segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))
+        if not visible:
             continue
 
         text = seg.get("display_text", "")
 
         if seg.get("selected_pictograms"):
-            if seg.get("keep_text", True):
+            if keep_text:
                 parts.append(f"[PIC] {text}")
             else:
                 labels = " + ".join(p["label"] for p in seg["selected_pictograms"])
                 parts.append(f"[PIC] {labels}")
         else:
-            if seg.get("keep_text", True):
+            if keep_text:
                 parts.append(text)
 
     sentence = ""
@@ -328,12 +348,12 @@ def build_hybrid_html(title: str, original_text: str, segments: List[Dict[str, A
     blocks = []
 
     for seg in segments:
-        if not seg.get("visible", True):
+        keep_text, visible = segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))
+        if not visible:
             continue
 
         text = seg.get("display_text", "")
         selected = seg.get("selected_pictograms", [])
-        keep_text = seg.get("keep_text", True)
 
         if selected:
             pictos_html = "".join(
@@ -345,9 +365,7 @@ def build_hybrid_html(title: str, original_text: str, segments: List[Dict[str, A
                 """
                 for p in selected
             )
-
             text_html = f'<div class="segment-text">{text}</div>' if keep_text else ""
-
             block = f"""
             <div class="segment with-picto">
                 <div class="picto-group">{pictos_html}</div>
@@ -375,23 +393,23 @@ def build_hybrid_html(title: str, original_text: str, segments: List[Dict[str, A
       <style>
         body {{
           font-family: Arial, sans-serif;
-          padding: 24px;
+          padding: 20px;
           background: #ffffff;
           color: #222;
         }}
         h1 {{ margin-bottom: 8px; }}
-        .subtitle {{ color: #555; margin-bottom: 24px; }}
+        .subtitle {{ color: #555; margin-bottom: 20px; }}
         .sentence {{
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 10px;
           align-items: flex-end;
         }}
         .segment {{
           border: 1px solid #ddd;
           border-radius: 14px;
           padding: 10px;
-          min-height: 80px;
+          min-height: 70px;
           background: #fafafa;
         }}
         .with-picto {{ background: #f8fbff; }}
@@ -405,11 +423,11 @@ def build_hybrid_html(title: str, original_text: str, segments: List[Dict[str, A
         }}
         .picto-item {{
           text-align: center;
-          min-width: 90px;
+          min-width: 80px;
         }}
         .picto-item img {{
-          width: 80px;
-          height: 80px;
+          width: 72px;
+          height: 72px;
           object-fit: contain;
         }}
         .picto-label {{
@@ -418,11 +436,11 @@ def build_hybrid_html(title: str, original_text: str, segments: List[Dict[str, A
         }}
         .segment-text {{
           text-align: center;
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 600;
         }}
         .original {{
-          margin-bottom: 20px;
+          margin-bottom: 18px;
           padding: 12px;
           border-radius: 12px;
           background: #f4f4f4;
@@ -475,24 +493,41 @@ def remove_segment(segments: List[Dict[str, Any]], idx: int) -> List[Dict[str, A
     return new_segments
 
 
-def generate_simple_pdf(title: str, original_text: str, preview_text: str) -> bytes:
-    def sanitize_text(text: str) -> str:
-        if not text:
-            return ""
-        text = str(text).replace("\r", " ").replace("\t", " ")
-        text = re.sub(r"\n{3,}", "\n\n", text)
-        text = re.sub(r"[ ]{2,}", " ", text)
-        return text.strip()
+def sanitize_pdf_text(text: str) -> str:
+    if not text:
+        return ""
+    text = str(text).replace("\r", " ").replace("\t", " ")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ ]{2,}", " ", text)
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("latin-1", "ignore").decode("latin-1")
+    return text.strip()
 
+
+def download_image_tempfile(url: str) -> str | None:
+    try:
+        response = requests.get(url, timeout=20, verify=False)
+        response.raise_for_status()
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        tmp.write(response.content)
+        tmp.flush()
+        tmp.close()
+        return tmp.name
+    except Exception:
+        return None
+
+
+def generate_simple_pdf(title: str, original_text: str, preview_text: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
     usable_width = pdf.w - pdf.l_margin - pdf.r_margin
 
-    title = sanitize_text(title)
-    original_text = sanitize_text(original_text)
-    preview_text = sanitize_text(preview_text) or "Sem conteúdo visível."
+    title = sanitize_pdf_text(title)
+    original_text = sanitize_pdf_text(original_text)
+    preview_text = sanitize_pdf_text(preview_text) or "Sem conteúdo visível."
 
     pdf.set_font("Helvetica", "B", 16)
     pdf.set_x(pdf.l_margin)
@@ -512,72 +547,266 @@ def generate_simple_pdf(title: str, original_text: str, preview_text: str) -> by
 
     pdf.set_font("Helvetica", "B", 12)
     pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(usable_width, 8, "Prévia da saída final:")
+    pdf.multi_cell(usable_width, 8, "Previa da saida final:")
 
     pdf.set_font("Helvetica", "", 12)
     pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(usable_width, 8, preview_text)
+    pdf.multi_cell(usable_width, 8, preview_text[:3000])
 
     return bytes(pdf.output())
 
 
+def generate_visual_pdf(title: str, original_text: str, segments: List[Dict[str, Any]]) -> bytes:
+    pdf = FPDF(format="A4", unit="mm")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin
+    card_gap = 6
+    cols = 2
+    card_width = (page_width - card_gap) / cols
+    card_height = 52
+
+    title = sanitize_pdf_text(title)
+    original_text = sanitize_pdf_text(original_text)
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.multi_cell(0, 10, title)
+
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(0, 6, f"Texto original: {original_text}")
+
+    pdf.ln(4)
+
+    visible_segments = []
+    for seg in segments:
+        keep_text, visible = segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))
+        if visible:
+            visible_segments.append((seg, keep_text))
+
+    x_start = pdf.l_margin
+    y = pdf.get_y()
+    col_idx = 0
+
+    temp_files = []
+
+    try:
+        for seg, keep_text in visible_segments:
+            if y + card_height > pdf.h - pdf.b_margin:
+                pdf.add_page()
+                y = pdf.t_margin
+                col_idx = 0
+
+            x = x_start + col_idx * (card_width + card_gap)
+
+            pdf.set_draw_color(180, 180, 180)
+            pdf.set_fill_color(248, 250, 252)
+            pdf.rect(x, y, card_width, card_height, style="DF")
+
+            inner_x = x + 3
+            inner_y = y + 3
+            inner_w = card_width - 6
+
+            selected = seg.get("selected_pictograms", [])
+            display_text = sanitize_pdf_text(seg.get("display_text", ""))
+
+            if selected:
+                max_images = min(len(selected), 2)
+                img_w = 18
+                img_h = 18
+                spacing = 3
+                total_img_width = (img_w * max_images) + (spacing * (max_images - 1))
+                img_x = inner_x + max((inner_w - total_img_width) / 2, 0)
+                img_y = inner_y + 1
+
+                for i, pic in enumerate(selected[:2]):
+                    tmp_path = download_image_tempfile(pic["image_url"])
+                    if tmp_path:
+                        temp_files.append(tmp_path)
+                        try:
+                            pdf.image(tmp_path, x=img_x + i * (img_w + spacing), y=img_y, w=img_w, h=img_h)
+                        except Exception:
+                            pass
+
+                text_y = inner_y + 24
+            else:
+                text_y = inner_y + 8
+
+            pdf.set_xy(inner_x, text_y)
+            pdf.set_font("Helvetica", "B", 10)
+
+            if keep_text:
+                pdf.multi_cell(inner_w, 5, display_text, align="C")
+            elif selected:
+                labels = " + ".join(
+                    sanitize_pdf_text(pic.get("label", ""))
+                    for pic in selected[:2]
+                )
+                pdf.multi_cell(inner_w, 5, labels, align="C")
+            else:
+                pdf.multi_cell(inner_w, 5, "", align="C")
+
+            col_idx += 1
+            if col_idx >= cols:
+                col_idx = 0
+                y += card_height + card_gap
+
+        return bytes(pdf.output())
+
+    finally:
+        for path in temp_files:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+
+def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) -> bytes:
+    pdf = FPDF(format="A4", unit="mm")
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+
+    title = sanitize_pdf_text(title)
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.multi_cell(0, 10, title)
+    pdf.ln(3)
+
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin
+    cols = 3
+    gap = 6
+    cell_w = (page_width - gap * (cols - 1)) / cols
+    cell_h = 62
+
+    x_start = pdf.l_margin
+    y = pdf.get_y()
+    col_idx = 0
+
+    temp_files = []
+
+    try:
+        for pic in selected_pictograms:
+            if y + cell_h > pdf.h - pdf.b_margin:
+                pdf.add_page()
+                y = pdf.t_margin
+                col_idx = 0
+
+            x = x_start + col_idx * (cell_w + gap)
+
+            pdf.set_draw_color(170, 170, 170)
+            pdf.set_fill_color(255, 255, 255)
+            pdf.rect(x, y, cell_w, cell_h, style="DF")
+
+            label = sanitize_pdf_text(pic.get("label", ""))
+            tmp_path = download_image_tempfile(pic["image_url"])
+
+            if tmp_path:
+                temp_files.append(tmp_path)
+                try:
+                    img_w = 28
+                    img_h = 28
+                    img_x = x + (cell_w - img_w) / 2
+                    img_y = y + 6
+                    pdf.image(tmp_path, x=img_x, y=img_y, w=img_w, h=img_h)
+                except Exception:
+                    pass
+
+            pdf.set_xy(x + 4, y + 38)
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(cell_w - 8, 5, label, align="C")
+
+            col_idx += 1
+            if col_idx >= cols:
+                col_idx = 0
+                y += cell_h + gap
+
+        return bytes(pdf.output())
+
+    finally:
+        for path in temp_files:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+
+# =========================
+# INTERFACE
+# =========================
+
 st.title(APP_TITLE)
-st.caption("Protótipo para transformar texto em saída híbrida com pictogramas e linguagem escrita.")
+st.caption("Transforme frases em materiais acessíveis com pictogramas, mantendo a estrutura de compreensão.")
 
 templates = load_templates()
 favorites = load_favorites()
 history = load_search_history()
 
-with st.expander("Modelos salvos"):
-    if templates:
-        template_names = [tpl.get("title", "Sem título") for tpl in templates]
-        selected_template_name = st.selectbox("Carregar modelo", [""] + template_names)
-        if selected_template_name:
-            selected_template = next(t for t in templates if t.get("title") == selected_template_name)
-            if st.button("Carregar este modelo"):
-                st.session_state["material_title"] = selected_template.get("title", "")
-                st.session_state["original_text"] = selected_template.get("original_text", "")
-                st.session_state["segments"] = selected_template.get("segments", [])
-                st.rerun()
-    else:
-        st.caption("Nenhum modelo salvo ainda.")
+with st.expander("Ajuda rápida"):
+    st.markdown(
+        """
+        **Fluxo sugerido**
 
-with st.expander("Favoritos"):
-    if favorites:
-        for fav in favorites:
-            c1, c2 = st.columns([5, 1])
-            with c1:
-                st.write(f"{fav.get('label')} — ID {fav.get('id')} ({fav.get('source_lang', '-')})")
-            with c2:
-                if st.button("Remover", key=f"remove_fav_{fav.get('id')}"):
-                    remove_favorite(fav.get("id"))
+        1. Escreva a frase.
+        2. Clique em **Gerar sugestões**.
+        3. Revise os segmentos.
+        4. Escolha o modo de cada segmento.
+        5. Se precisar, abra **Ajustes avançados**.
+        6. Exporte em HTML, JSON ou PDF.
+        """
+    )
+
+with st.expander("Modelos, favoritos e histórico"):
+    tab1, tab2, tab3 = st.tabs(["Modelos", "Favoritos", "Histórico"])
+
+    with tab1:
+        if templates:
+            template_names = [tpl.get("title", "Sem título") for tpl in templates]
+            selected_template_name = st.selectbox("Carregar modelo", [""] + template_names)
+            if selected_template_name:
+                selected_template = next(t for t in templates if t.get("title") == selected_template_name)
+                if st.button("Carregar modelo selecionado", use_container_width=True):
+                    st.session_state["material_title"] = selected_template.get("title", "")
+                    st.session_state["original_text"] = selected_template.get("original_text", "")
+                    st.session_state["segments"] = selected_template.get("segments", [])
                     st.rerun()
-    else:
-        st.caption("Nenhum pictograma favorito ainda.")
+        else:
+            st.caption("Nenhum modelo salvo ainda.")
 
-with st.expander("Histórico de busca"):
-    if history:
-        for item in history[:20]:
-            st.write(f"{item.get('segment_text', '')} → {item.get('term', '')} [{item.get('lang', '')}]")
-    else:
-        st.caption("Nenhum histórico ainda.")
+    with tab2:
+        if favorites:
+            for fav in favorites:
+                c1, c2 = st.columns([5, 1])
+                with c1:
+                    st.write(f"{fav.get('label')} — ID {fav.get('id')} ({fav.get('source_lang', '-')})")
+                with c2:
+                    if st.button("Remover", key=f"remove_fav_{fav.get('id')}"):
+                        remove_favorite(fav.get("id"))
+                        st.rerun()
+        else:
+            st.caption("Nenhum pictograma favorito ainda.")
 
-left, right = st.columns([2, 1])
+    with tab3:
+        if history:
+            for item in history[:20]:
+                st.write(f"{item.get('segment_text', '')} → {item.get('term', '')} [{item.get('lang', '')}]")
+        else:
+            st.caption("Nenhum histórico ainda.")
 
-with left:
-    material_title = st.text_input(
-        "Título do material",
-        value=st.session_state.get("material_title", "Material acessível com pictogramas"),
-    )
-    input_text = st.text_area(
-        "Texto do professor",
-        height=180,
-        value=st.session_state.get("original_text", ""),
-        placeholder="Ex.: Depois do recreio, guarde o material e sente-se em roda.",
-    )
+st.divider()
 
-with right:
-    st.info("Versão 1.4: modelos, favoritos, histórico e PDF simples.")
+st.subheader("1. Entrada")
+material_title = st.text_input(
+    "Título do material",
+    value=st.session_state.get("material_title", "Material acessível com pictogramas"),
+)
+
+input_text = st.text_area(
+    "Texto do professor",
+    height=160,
+    value=st.session_state.get("original_text", ""),
+    placeholder="Ex.: Depois do recreio, guarde o material e sente-se em roda.",
+)
 
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
@@ -594,149 +823,42 @@ if st.button("Gerar sugestões", use_container_width=True):
 
 if "segments" in st.session_state:
     st.divider()
-    st.subheader("Revisão dos segmentos e pictogramas")
+    st.subheader("2. Revisão dos segmentos")
 
     segments = st.session_state["segments"]
     edited_segments = []
 
     for idx, seg in enumerate(segments):
         with st.container(border=True):
-            top_a, top_b, top_c, top_d = st.columns(4)
-
-            with top_a:
-                if st.button("⬆️ Subir", key=f"up_{idx}", use_container_width=True):
-                    st.session_state["segments"] = move_segment(segments, idx, -1)
-                    st.rerun()
-
-            with top_b:
-                if st.button("⬇️ Descer", key=f"down_{idx}", use_container_width=True):
-                    st.session_state["segments"] = move_segment(segments, idx, 1)
-                    st.rerun()
-
-            with top_c:
-                if st.button("📄 Duplicar", key=f"dup_{idx}", use_container_width=True):
-                    st.session_state["segments"] = duplicate_segment(segments, idx)
-                    st.rerun()
-
-            with top_d:
-                if st.button("🗑️ Remover", key=f"remove_{idx}", use_container_width=True):
-                    st.session_state["segments"] = remove_segment(segments, idx)
-                    st.rerun()
-
             st.markdown(f"### Segmento {idx + 1}")
-            st.markdown(f"**Texto original:** `{seg['original_text']}`")
-
-            if seg["segment_type"] == "text":
-                display_text = st.text_input(
-                    "Texto exibido na saída final",
-                    value=seg.get("display_text", seg["original_text"]),
-                    key=f"display_text_text_{idx}",
-                )
-                keep_text = st.checkbox(
-                    "Manter este texto na saída final",
-                    value=seg.get("keep_text", True),
-                    key=f"keep_text_only_{idx}",
-                )
-                visible = st.checkbox(
-                    "Exibir este segmento",
-                    value=seg.get("visible", True),
-                    key=f"visible_text_only_{idx}",
-                )
-
-                seg["display_text"] = display_text
-                seg["keep_text"] = keep_text
-                seg["visible"] = visible
-                seg["selected_pictograms"] = []
-                seg["selected_pictogram_ids"] = []
-
-                edited_segments.append(seg)
-                continue
+            st.caption(f"Original: {seg['original_text']}")
 
             display_text = st.text_input(
-                "Texto exibido na saída final",
+                "Texto exibido",
                 value=seg.get("display_text", seg["original_text"]),
                 key=f"display_text_{idx}",
             )
 
-            lang_cols = st.columns(3)
-            with lang_cols[0]:
-                term_pt = st.text_input(
-                    "Busca em português",
-                    value=seg.get("search_terms", {}).get("pt", ""),
-                    key=f"search_pt_{idx}",
-                )
-            with lang_cols[1]:
-                term_en = st.text_input(
-                    "Busca em inglês",
-                    value=seg.get("search_terms", {}).get("en", ""),
-                    key=f"search_en_{idx}",
-                )
-            with lang_cols[2]:
-                term_es = st.text_input(
-                    "Busca em espanhol",
-                    value=seg.get("search_terms", {}).get("es", ""),
-                    key=f"search_es_{idx}",
-                )
-
-            active_languages = st.multiselect(
-                "Idiomas ativos para busca",
-                options=["pt", "en", "es"],
-                default=seg.get("active_languages", ["pt"]),
-                key=f"active_langs_{idx}",
+            mode_options = ["Texto apenas", "Texto + pictograma", "Pictograma apenas", "Ocultar"]
+            default_mode = seg.get(
+                "segment_mode",
+                "Texto + pictograma" if seg["segment_type"] == "text_with_pictogram" else "Texto apenas"
+            )
+            segment_mode = st.selectbox(
+                "Modo do segmento",
+                options=mode_options,
+                index=mode_options.index(default_mode) if default_mode in mode_options else 0,
+                key=f"segment_mode_{idx}",
             )
 
-            pt_base = term_pt.strip()
-            hints = get_language_hints(pt_base)
-            if hints["en"] or hints["es"]:
-                st.caption(
-                    "Sugestões rápidas — "
-                    f"EN: {', '.join(hints['en']) if hints['en'] else '-'} | "
-                    f"ES: {', '.join(hints['es']) if hints['es'] else '-'}"
-                )
-
-            col_a, col_b = st.columns(2)
-            with col_a:
-                keep_text = st.checkbox(
-                    "Manter texto junto com os pictogramas",
-                    value=seg.get("keep_text", True),
-                    key=f"keep_text_{idx}",
-                )
-            with col_b:
-                visible = st.checkbox(
-                    "Exibir este segmento",
-                    value=seg.get("visible", True),
-                    key=f"visible_{idx}",
-                )
-
             seg["display_text"] = display_text
-            seg["search_terms"] = {
-                "pt": term_pt.strip(),
-                "en": term_en.strip(),
-                "es": term_es.strip(),
-            }
-            seg["active_languages"] = active_languages
-            seg["keep_text"] = keep_text
-            seg["visible"] = visible
+            seg["segment_mode"] = segment_mode
 
-            if st.button(f"🔎 Atualizar busca deste segmento", key=f"refresh_{idx}", use_container_width=True):
-                seg = fetch_options_for_segment(seg)
-                segments[idx] = seg
-                st.session_state["segments"] = segments
-                st.rerun()
-
-            options = seg.get("pictogram_options", [])
-            fetch_error = seg.get("fetch_error", "")
-
-            if fetch_error:
-                st.warning(fetch_error)
-
-            if not options:
-                st.info("Nenhum pictograma encontrado para este segmento. Ele pode permanecer apenas como texto.")
-                seg["selected_pictograms"] = []
-                seg["selected_pictogram_ids"] = []
+            if seg["segment_type"] == "text":
                 edited_segments.append(seg)
                 continue
 
+            options = seg.get("pictogram_options", [])
             option_labels = [
                 f"{opt['label']} (ID {opt['id']}, {opt.get('source_lang', '-')})"
                 for opt in options
@@ -749,7 +871,7 @@ if "segments" in st.session_state:
                     default_selected_labels.append(label)
 
             selected_labels = st.multiselect(
-                f"Selecione um ou mais pictogramas para '{seg['display_text']}'",
+                "Pictogramas selecionados",
                 options=option_labels,
                 default=default_selected_labels,
                 key=f"multi_{idx}",
@@ -763,14 +885,89 @@ if "segments" in st.session_state:
             seg["selected_pictogram_ids"] = [p["id"] for p in selected_pictograms]
 
             if selected_pictograms:
-                cols = st.columns(min(len(selected_pictograms), 4))
-                for pic_idx, pic in enumerate(selected_pictograms[:4]):
+                cols = st.columns(min(len(selected_pictograms), 3))
+                for pic_idx, pic in enumerate(selected_pictograms[:3]):
                     with cols[pic_idx]:
-                        st.image(pic["image_url"], width=120)
+                        st.image(pic["image_url"], width=110)
                         st.caption(f"{pic['label']} ({pic.get('source_lang', '-')})")
-                        if st.button("⭐ Favoritar", key=f"fav_{idx}_{pic['id']}"):
+                        if st.button("⭐", key=f"fav_{idx}_{pic['id']}", help="Favoritar"):
                             save_favorite(pic)
                             st.rerun()
+
+            with st.expander("Ajustes avançados"):
+                lang_cols = st.columns(3)
+                with lang_cols[0]:
+                    term_pt = st.text_input(
+                        "Busca em português",
+                        value=seg.get("search_terms", {}).get("pt", ""),
+                        key=f"search_pt_{idx}",
+                    )
+                with lang_cols[1]:
+                    term_en = st.text_input(
+                        "Busca em inglês",
+                        value=seg.get("search_terms", {}).get("en", ""),
+                        key=f"search_en_{idx}",
+                    )
+                with lang_cols[2]:
+                    term_es = st.text_input(
+                        "Busca em espanhol",
+                        value=seg.get("search_terms", {}).get("es", ""),
+                        key=f"search_es_{idx}",
+                    )
+
+                active_languages = st.multiselect(
+                    "Idiomas ativos para busca",
+                    options=["pt", "en", "es"],
+                    default=seg.get("active_languages", ["pt"]),
+                    key=f"active_langs_{idx}",
+                )
+
+                pt_base = term_pt.strip()
+                hints = get_language_hints(pt_base)
+                if hints["en"] or hints["es"]:
+                    st.caption(
+                        "Sugestões rápidas — "
+                        f"EN: {', '.join(hints['en']) if hints['en'] else '-'} | "
+                        f"ES: {', '.join(hints['es']) if hints['es'] else '-'}"
+                    )
+
+                seg["search_terms"] = {
+                    "pt": term_pt.strip(),
+                    "en": term_en.strip(),
+                    "es": term_es.strip(),
+                }
+                seg["active_languages"] = active_languages
+
+                adv_a, adv_b, adv_c, adv_d = st.columns(4)
+
+                with adv_a:
+                    if st.button("⬆️ Subir", key=f"up_{idx}", use_container_width=True):
+                        st.session_state["segments"] = move_segment(segments, idx, -1)
+                        st.rerun()
+
+                with adv_b:
+                    if st.button("⬇️ Descer", key=f"down_{idx}", use_container_width=True):
+                        st.session_state["segments"] = move_segment(segments, idx, 1)
+                        st.rerun()
+
+                with adv_c:
+                    if st.button("📄 Duplicar", key=f"dup_{idx}", use_container_width=True):
+                        st.session_state["segments"] = duplicate_segment(segments, idx)
+                        st.rerun()
+
+                with adv_d:
+                    if st.button("🗑️ Remover", key=f"remove_{idx}", use_container_width=True):
+                        st.session_state["segments"] = remove_segment(segments, idx)
+                        st.rerun()
+
+                if st.button("🔎 Atualizar busca deste segmento", key=f"refresh_{idx}", use_container_width=True):
+                    seg = fetch_options_for_segment(seg)
+                    segments[idx] = seg
+                    st.session_state["segments"] = segments
+                    st.rerun()
+
+                if seg.get("fetch_error"):
+                    st.warning(seg["fetch_error"])
 
             edited_segments.append(seg)
 
@@ -779,32 +976,30 @@ if "segments" in st.session_state:
     st.session_state["original_text"] = input_text
 
     st.divider()
-    st.subheader("Prévia da saída final")
+    st.subheader("3. Prévia final")
 
     preview_text = render_phrase_preview(edited_segments)
-    st.markdown("**Prévia textual da estrutura final:**")
+    st.markdown("**Estrutura textual final**")
     st.write(preview_text if preview_text else "_Nenhum segmento visível na saída final._")
 
-    st.markdown("**Prévia visual por segmento:**")
-    preview_cols = st.columns(4)
-    visible_index = 0
+    st.markdown("**Prévia visual**")
+    visible_segments = [seg for seg in edited_segments if segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))[1]]
 
-    for seg in edited_segments:
-        if not seg.get("visible", True):
-            continue
-
-        with preview_cols[visible_index % 4]:
-            st.markdown(f"**{seg['display_text']}**")
-            if seg.get("selected_pictograms"):
-                for pic in seg["selected_pictograms"][:2]:
-                    st.image(pic["image_url"], width=90)
-                    st.caption(f"{pic['label']} ({pic.get('source_lang', '-')})")
-            else:
-                st.caption("Sem pictograma")
-
-            st.caption("Texto mantido" if seg.get("keep_text", True) else "Só pictograma")
-
-        visible_index += 1
+    for start in range(0, len(visible_segments), 2):
+        row = st.columns(2)
+        for col_idx, seg in enumerate(visible_segments[start:start + 2]):
+            keep_text, _ = segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))
+            with row[col_idx]:
+                with st.container(border=True):
+                    st.markdown(f"**{seg['display_text']}**")
+                    if seg.get("selected_pictograms"):
+                        for pic in seg["selected_pictograms"][:2]:
+                            st.image(pic["image_url"], width=95)
+                            st.caption(f"{pic['label']} ({pic.get('source_lang', '-')})")
+                    else:
+                        st.caption("Sem pictograma")
+                    st.caption(seg.get("segment_mode", "Texto apenas"))
+                    st.caption("Texto mantido" if keep_text else "Sem texto")
 
     html_hybrid = build_hybrid_html(material_title, input_text, edited_segments)
     json_output = build_output_json(material_title, input_text, edited_segments)
@@ -815,14 +1010,16 @@ if "segments" in st.session_state:
             selected_only.append(pic)
 
     html_board = generate_board_html(material_title, selected_only) if selected_only else ""
-    pdf_bytes = generate_simple_pdf(material_title, input_text, preview_text)
+    pdf_simple_bytes = generate_simple_pdf(material_title, input_text, preview_text)
+    pdf_visual_bytes = generate_visual_pdf(material_title, input_text, edited_segments)
+    pdf_board_bytes = generate_board_pdf(material_title, selected_only) if selected_only else b""
 
     st.divider()
-    st.subheader("Salvar e exportar")
+    st.subheader("4. Salvar e exportar")
 
-    col_save, col_html, col_json, col_pdf = st.columns(4)
+    save_col, export_col1, export_col2 = st.columns(3)
 
-    with col_save:
+    with save_col:
         if st.button("💾 Salvar como modelo", use_container_width=True):
             save_template({
                 "title": material_title,
@@ -831,7 +1028,7 @@ if "segments" in st.session_state:
             })
             st.success("Modelo salvo.")
 
-    with col_html:
+    with export_col1:
         st.download_button(
             label="Baixar HTML híbrido",
             data=html_hybrid,
@@ -840,7 +1037,6 @@ if "segments" in st.session_state:
             use_container_width=True,
         )
 
-    with col_json:
         st.download_button(
             label="Baixar JSON",
             data=json_output,
@@ -849,11 +1045,28 @@ if "segments" in st.session_state:
             use_container_width=True,
         )
 
-    with col_pdf:
+    with export_col2:
         st.download_button(
             label="Baixar PDF simples",
-            data=pdf_bytes,
-            file_name="material_pictogramas.pdf",
+            data=pdf_simple_bytes,
+            file_name="material_pictogramas_textual.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+        st.download_button(
+            label="Baixar PDF visual híbrido",
+            data=pdf_visual_bytes,
+            file_name="material_pictogramas_visual.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+    if pdf_board_bytes:
+        st.download_button(
+            label="Baixar PDF prancha A4",
+            data=pdf_board_bytes,
+            file_name="prancha_pictogramas_a4.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
@@ -869,5 +1082,5 @@ if "segments" in st.session_state:
 
 st.divider()
 st.caption(
-    "Protótipo educacional em evolução. Recomenda-se validação pedagógica com professores, estudantes e equipes de acessibilidade antes de uso ampliado."
+    "Versão final consolidada: interface simplificada, busca multilíngue, modelos, favoritos, histórico e exportação em HTML, JSON e PDF."
 )
