@@ -1318,7 +1318,7 @@ if "segments" in st.session_state:
             Visualize como o material será apresentado antes de salvar ou exportar.
         </div>
     </div>
-    """), unsafe_allow_html=True)
+    """)
 
     preview_text = render_phrase_preview(edited_segments)
     st.markdown("**Estrutura textual final**")
