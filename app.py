@@ -1158,7 +1158,7 @@ if "segments" in st.session_state:
         <div class="section-subtitle">
             Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.
         </div>
-    </div>
+    </div>, unsafe_allow_html=True
     """)
 
     segments = st.session_state["segments"]
@@ -1319,7 +1319,7 @@ if "segments" in st.session_state:
         <div class="section-subtitle">
             Visualize como o material será apresentado antes de salvar ou exportar.
         </div>
-    </div>
+    </div>, unsafe_allow_html=True
     """)
 
     preview_text = render_phrase_preview(edited_segments)
