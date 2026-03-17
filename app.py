@@ -984,37 +984,36 @@ def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) ->
 import base64
 
 def render_hero():
-    logo_path = Path("assets/logo.svg")
     logo_html = ""
+    logo_path = Path("assets/logo.svg")
 
     if logo_path.exists():
         svg_content = logo_path.read_bytes()
         b64 = base64.b64encode(svg_content).decode("utf-8")
+        logo_html = (
+            '<div class="hero-logo">'
+            f'<img src="data:image/svg+xml;base64,{b64}" alt="Logo">'
+            '</div>'
+        )
 
-        logo_html = textwrap.dedent(f"""
-            <div class="hero-logo">
-                <img src="data:image/svg+xml;base64,{b64}" alt="Logo">
-            </div>
-        """)
-
-    html = textwrap.dedent(f"""
-        <div class="hero-wrap">
-            {logo_html}
-            <div class="hero-content">
-                <div class="hero-title">{APP_TITLE}</div>
-                <div class="hero-subtitle">
-                    Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
-                    ampliando a compreensão e preservando a autonomia pedagógica do professor.
-                </div>
-                <div class="hero-pills">
-                    <div class="hero-pill">CAA</div>
-                    <div class="hero-pill">Pictogramas</div>
-                    <div class="hero-pill">Português + Inglês + Espanhol</div>
-                    <div class="hero-pill">PDF / HTML / JSON</div>
-                </div>
-            </div>
-        </div>
-    """)
+    html = (
+        '<div class="hero-wrap">'
+        f'{logo_html}'
+        '<div class="hero-content">'
+        f'<div class="hero-title">{APP_TITLE}</div>'
+        '<div class="hero-subtitle">'
+        'Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase, '
+        'ampliando a compreensão e preservando a autonomia pedagógica do professor.'
+        '</div>'
+        '<div class="hero-pills">'
+        '<div class="hero-pill">CAA</div>'
+        '<div class="hero-pill">Pictogramas</div>'
+        '<div class="hero-pill">Português + Inglês + Espanhol</div>'
+        '<div class="hero-pill">PDF / HTML / JSON</div>'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
 
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1060,18 +1059,16 @@ favorites = load_favorites()
 history = load_search_history()
 
 with st.expander("Guia rápido de uso"):
-    st.markdown(
-        """
-        **Fluxo sugerido**
+    st.markdown("""
+**Fluxo sugerido**
 
-        1. Escreva a frase.
-        2. Clique em **Gerar sugestões**.
-        3. Revise os segmentos.
-        4. Escolha o modo de cada segmento.
-        5. Se precisar, abra **Ajustes avançados**.
-        6. Exporte em HTML, JSON ou PDF.
-        """
-    )
+1. Escreva a frase.  
+2. Clique em **Gerar sugestões**.  
+3. Revise os segmentos.  
+4. Escolha o modo de cada segmento.  
+5. Se precisar, abra **Ajustes avançados**.  
+6. Exporte em HTML, JSON ou PDF.  
+""")
 
 with st.expander("Biblioteca do projeto"):
     tab1, tab2, tab3 = st.tabs(["Modelos", "Favoritos", "Histórico"])
@@ -1119,7 +1116,7 @@ st.markdown("""
         Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.
     </div>
 </div>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 material_title = st.text_input(
     "Título do material",
@@ -1137,7 +1134,7 @@ st.markdown("""
 <div class="info-banner">
     Dica: frases curtas e objetivas costumam gerar sugestões pictográficas mais consistentes e fáceis de revisar.
 </div>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
@@ -1161,7 +1158,7 @@ if "segments" in st.session_state:
             Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     segments = st.session_state["segments"]
     edited_segments = []
@@ -1322,7 +1319,7 @@ if "segments" in st.session_state:
             Visualize como o material será apresentado antes de salvar ou exportar.
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     preview_text = render_phrase_preview(edited_segments)
     st.markdown("**Estrutura textual final**")
@@ -1368,7 +1365,7 @@ if "segments" in st.session_state:
             Salve como modelo ou exporte em formatos adequados para uso pedagógico e impressão.
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
 
