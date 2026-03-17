@@ -33,6 +33,152 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+st.markdown("""
+<style>
+    .main > div {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    .block-container {
+        max-width: 1180px;
+        padding-top: 1rem;
+        padding-bottom: 3rem;
+    }
+
+    h1, h2, h3 {
+        letter-spacing: -0.02em;
+    }
+
+    .hero-card {
+        background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #0EA5E9 100%);
+        color: white;
+        padding: 2rem 2rem 1.6rem 2rem;
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(37, 99, 235, 0.22);
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
+        font-weight: 800;
+        margin-bottom: 0.45rem;
+        line-height: 1.1;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        opacity: 0.95;
+        max-width: 780px;
+        line-height: 1.5;
+    }
+
+    .section-card {
+        background: #ffffff;
+        border: 1px solid #dbe7ff;
+        border-radius: 22px;
+        padding: 1.25rem 1.25rem 1rem 1.25rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0F172A;
+        margin-bottom: 0.3rem;
+    }
+
+    .section-subtitle {
+        font-size: 0.94rem;
+        color: #475569;
+        margin-bottom: 0.9rem;
+    }
+
+    .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.9rem;
+    }
+
+    .pill {
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.28);
+        color: white;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .info-banner {
+        background: linear-gradient(90deg, #EFF6FF 0%, #F8FAFF 100%);
+        border: 1px solid #BFDBFE;
+        border-radius: 18px;
+        padding: 0.95rem 1rem;
+        color: #1E3A8A;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+
+    .small-muted {
+        color: #64748B;
+        font-size: 0.92rem;
+    }
+
+    div[data-testid="stButton"] > button {
+        border-radius: 14px !important;
+        border: 1px solid #c7d7fe !important;
+        min-height: 2.8rem !important;
+        font-weight: 600 !important;
+    }
+
+    div[data-testid="stDownloadButton"] > button {
+        border-radius: 14px !important;
+        min-height: 2.8rem !important;
+        font-weight: 700 !important;
+    }
+
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stTextArea"] textarea,
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+    div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
+        border-radius: 14px !important;
+    }
+
+    div[data-testid="stExpander"] details {
+        border-radius: 18px !important;
+        border: 1px solid #dbe7ff !important;
+        background: white !important;
+    }
+
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {
+        gap: 0.35rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero-card {
+            padding: 1.4rem 1.2rem;
+            border-radius: 18px;
+        }
+
+        .hero-title {
+            font-size: 1.6rem;
+        }
+
+        .hero-subtitle {
+            font-size: 0.95rem;
+        }
+
+        .section-card {
+            border-radius: 16px;
+            padding: 0.95rem;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
 STOPWORDS = {
     "a", "o", "as", "os", "de", "da", "do", "das", "dos",
     "e", "em", "no", "na", "nos", "nas", "um", "uma", "uns", "umas",
@@ -97,10 +243,6 @@ SEARCH_HINTS = {
     "sala": {"en": ["classroom", "room"], "es": ["aula", "sala"]},
 }
 
-
-# =========================
-# FUNÇÕES AUXILIARES
-# =========================
 
 def normalize_text(text: str) -> str:
     text = text.lower().strip()
@@ -527,7 +669,7 @@ def generate_simple_pdf(title: str, original_text: str, preview_text: str) -> by
 
     title = sanitize_pdf_text(title)
     original_text = sanitize_pdf_text(original_text)
-    preview_text = sanitize_pdf_text(preview_text) or "Sem conteúdo visível."
+    preview_text = sanitize_pdf_text(preview_text) or "Sem conteudo visivel."
 
     pdf.set_font("Helvetica", "B", 16)
     pdf.set_x(pdf.l_margin)
@@ -735,14 +877,27 @@ def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) ->
 # INTERFACE
 # =========================
 
-st.title(APP_TITLE)
-st.caption("Transforme frases em materiais acessíveis com pictogramas, mantendo a estrutura de compreensão.")
+st.markdown(f"""
+<div class="hero-card">
+    <div class="hero-title">{APP_TITLE}</div>
+    <div class="hero-subtitle">
+        Crie materiais acessíveis com pictogramas de forma inteligente, mantendo a estrutura da frase,
+        ampliando a compreensão e preservando a autonomia pedagógica do professor.
+    </div>
+    <div class="pill-row">
+        <div class="pill">CAA</div>
+        <div class="pill">Pictogramas</div>
+        <div class="pill">Português + Inglês + Espanhol</div>
+        <div class="pill">PDF / HTML / JSON</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 templates = load_templates()
 favorites = load_favorites()
 history = load_search_history()
 
-with st.expander("Ajuda rápida"):
+with st.expander("Guia rápido de uso"):
     st.markdown(
         """
         **Fluxo sugerido**
@@ -756,7 +911,7 @@ with st.expander("Ajuda rápida"):
         """
     )
 
-with st.expander("Modelos, favoritos e histórico"):
+with st.expander("Biblioteca do projeto"):
     tab1, tab2, tab3 = st.tabs(["Modelos", "Favoritos", "Histórico"])
 
     with tab1:
@@ -795,7 +950,15 @@ with st.expander("Modelos, favoritos e histórico"):
 
 st.divider()
 
-st.subheader("1. Entrada")
+st.markdown("""
+<div class="section-card">
+    <div class="section-title">1. Entrada</div>
+    <div class="section-subtitle">
+        Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 material_title = st.text_input(
     "Título do material",
     value=st.session_state.get("material_title", "Material acessível com pictogramas"),
@@ -807,6 +970,12 @@ input_text = st.text_area(
     value=st.session_state.get("original_text", ""),
     placeholder="Ex.: Depois do recreio, guarde o material e sente-se em roda.",
 )
+
+st.markdown("""
+<div class="info-banner">
+    Dica: frases curtas e objetivas costumam gerar sugestões pictográficas mais consistentes e fáceis de revisar.
+</div>
+""", unsafe_allow_html=True)
 
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
@@ -823,7 +992,14 @@ if st.button("Gerar sugestões", use_container_width=True):
 
 if "segments" in st.session_state:
     st.divider()
-    st.subheader("2. Revisão dos segmentos")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-title">2. Revisão dos segmentos</div>
+        <div class="section-subtitle">
+            Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     segments = st.session_state["segments"]
     edited_segments = []
@@ -976,7 +1152,14 @@ if "segments" in st.session_state:
     st.session_state["original_text"] = input_text
 
     st.divider()
-    st.subheader("3. Prévia final")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-title">3. Prévia final</div>
+        <div class="section-subtitle">
+            Visualize como o material será apresentado antes de salvar ou exportar.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     preview_text = render_phrase_preview(edited_segments)
     st.markdown("**Estrutura textual final**")
@@ -1015,7 +1198,14 @@ if "segments" in st.session_state:
     pdf_board_bytes = generate_board_pdf(material_title, selected_only) if selected_only else b""
 
     st.divider()
-    st.subheader("4. Salvar e exportar")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-title">4. Salvar e exportar</div>
+        <div class="section-subtitle">
+            Salve como modelo ou exporte em formatos adequados para uso pedagógico e impressão.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     save_col, export_col1, export_col2 = st.columns(3)
 
@@ -1081,6 +1271,9 @@ if "segments" in st.session_state:
         )
 
 st.divider()
-st.caption(
-    "Versão final consolidada: interface simplificada, busca multilíngue, modelos, favoritos, histórico e exportação em HTML, JSON e PDF."
-)
+st.markdown("""
+<div class="small-muted">
+    Plataforma em evolução para produção de materiais acessíveis com pictogramas, busca multilíngue
+    e exportação pedagógica em múltiplos formatos.
+</div>
+""", unsafe_allow_html=True)
