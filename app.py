@@ -1130,11 +1130,13 @@ input_text = st.text_area(
     placeholder="Ex.: Depois do recreio, guarde o material e sente-se em roda.",
 )
 
-st.markdown("""
-<div class="info-banner">
-    Dica: frases curtas e objetivas costumam gerar sugestões pictográficas mais consistentes e fáceis de revisar.
-</div>
-""")
+st.markdown(
+    '<div class="section-card">'
+    '<div class="section-title">1. Entrada</div>'
+    '<div class="section-subtitle">Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.</div>'
+    '</div>',
+    unsafe_allow_html=True
+)
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
         st.error("Digite um texto primeiro.")
@@ -1357,14 +1359,13 @@ if "segments" in st.session_state:
     pdf_board_bytes = generate_board_pdf(material_title, selected_only) if selected_only else b""
 
     st.divider()
-    st.markdown("""
-    <div class="section-card">
-        <div class="section-title">4. Salvar e exportar</div>
-        <div class="section-subtitle">
-            Salve como modelo ou exporte em formatos adequados para uso pedagógico e impressão.
-        </div>
-    </div>
-    """)
+    st.markdown(
+    '<div class="section-card">'
+    '<div class="section-title">1. Entrada</div>'
+    '<div class="section-subtitle">Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.</div>'
+    '</div>',
+    unsafe_allow_html=True
+)
 
     st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
 
