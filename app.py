@@ -979,13 +979,19 @@ def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) ->
             except Exception:
                 pass
 
+import base64
+
 def render_hero():
     logo_path = Path("assets/logo.svg")
     logo_html = ""
+
     if logo_path.exists():
+        svg_content = logo_path.read_bytes()
+        b64 = base64.b64encode(svg_content).decode()
+
         logo_html = f"""
         <div class="hero-logo">
-            <img src="data:image/svg+xml;utf8,{logo_path.read_text(encoding='utf-8')}" alt="Logo">
+            <img src="data:image/svg+xml;base64,{b64}" alt="Logo">
         </div>
         """
 
@@ -1158,9 +1164,9 @@ if "segments" in st.session_state:
 
     for idx, seg in enumerate(segments):
         with st.container(border=True):
-st.markdown(f"<div class='segment-chip'>Segmento {idx + 1}</div>", unsafe_allow_html=True)
-st.markdown(f"### {seg.get('display_text', seg['original_text'])}")
-st.caption(f"Original: {seg['original_text']}")
+            st.markdown(f"<div class='segment-chip'>Segmento {idx + 1}</div>", unsafe_allow_html=True)
+            st.markdown(f"### {seg.get('display_text', seg['original_text'])}")
+            st.caption(f"Original: {seg['original_text']}")
 
             display_text = st.text_input(
                 "Texto exibido",
