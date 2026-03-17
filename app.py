@@ -1116,7 +1116,7 @@ st.markdown("""
         Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.
     </div>
 </div>
-"""), unsafe_allow_html=True)
+""")
 
 material_title = st.text_input(
     "Título do material",
@@ -1134,8 +1134,7 @@ st.markdown("""
 <div class="info-banner">
     Dica: frases curtas e objetivas costumam gerar sugestões pictográficas mais consistentes e fáceis de revisar.
 </div>
-"""), unsafe_allow_html=True)
-
+""")
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
         st.error("Digite um texto primeiro.")
@@ -1158,7 +1157,7 @@ if "segments" in st.session_state:
             Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.
         </div>
     </div>
-    """), unsafe_allow_html=True)
+    """)
 
     segments = st.session_state["segments"]
     edited_segments = []
@@ -1365,7 +1364,7 @@ if "segments" in st.session_state:
             Salve como modelo ou exporte em formatos adequados para uso pedagógico e impressão.
         </div>
     </div>
-    """), unsafe_allow_html=True)
+    """)
 
     st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
 
