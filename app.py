@@ -3,7 +3,6 @@ import json
 import re
 import tempfile
 import unicodedata
-import textwrap
 import base64
 from copy import deepcopy
 from typing import List, Dict, Any
@@ -36,7 +35,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
     .main > div {
         padding-top: 1.2rem;
@@ -197,22 +197,6 @@ st.markdown("""
         margin-bottom: 0.45rem;
     }
 
-    .preview-panel {
-        background: white;
-        border: 1px solid #DCE8FF;
-        border-radius: 22px;
-        padding: 1rem;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
-    }
-
-    .export-panel {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%);
-        border: 1px solid #DCE8FF;
-        border-radius: 22px;
-        padding: 1rem;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
-    }
-
     .small-muted {
         color: #64748B;
         font-size: 0.92rem;
@@ -278,15 +262,15 @@ st.markdown("""
             grid-template-columns: 1fr;
         }
 
-        .section-card,
-        .preview-panel,
-        .export-panel {
+        .section-card {
             border-radius: 18px;
             padding: 0.95rem;
         }
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 STOPWORDS = {
     "a", "o", "as", "os", "de", "da", "do", "das", "dos",
@@ -351,6 +335,10 @@ SEARCH_HINTS = {
     "lanche": {"en": ["snack"], "es": ["merienda"]},
     "sala": {"en": ["classroom", "room"], "es": ["aula", "sala"]},
 }
+
+
+def render_html(html: str):
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def normalize_text(text: str) -> str:
@@ -981,7 +969,6 @@ def generate_board_pdf(title: str, selected_pictograms: List[Dict[str, Any]]) ->
             except Exception:
                 pass
 
-import base64
 
 def render_hero():
     logo_html = ""
@@ -1015,48 +1002,27 @@ def render_hero():
         '</div>'
     )
 
-    st.markdown(html, unsafe_allow_html=True)
+    render_html(html)
 
 
 def render_kpis(templates, favorites, history):
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Modelos salvos</div>
-            <div class="kpi-value">{len(templates)}</div>
-            <div class="kpi-desc">Estruturas prontas para reutilização</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Favoritos</div>
-            <div class="kpi-value">{len(favorites)}</div>
-            <div class="kpi-desc">Pictogramas priorizados</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Histórico</div>
-            <div class="kpi-value">{len(history)}</div>
-            <div class="kpi-desc">Buscas recentes registradas</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Idiomas de busca</div>
-            <div class="kpi-value">3</div>
-            <div class="kpi-desc">Português, inglês e espanhol</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    render_html(
+        f'<div class="kpi-grid">'
+        f'<div class="kpi-card"><div class="kpi-label">Modelos salvos</div><div class="kpi-value">{len(templates)}</div><div class="kpi-desc">Estruturas prontas para reutilização</div></div>'
+        f'<div class="kpi-card"><div class="kpi-label">Favoritos</div><div class="kpi-value">{len(favorites)}</div><div class="kpi-desc">Pictogramas priorizados</div></div>'
+        f'<div class="kpi-card"><div class="kpi-label">Histórico</div><div class="kpi-value">{len(history)}</div><div class="kpi-desc">Buscas recentes registradas</div></div>'
+        f'<div class="kpi-card"><div class="kpi-label">Idiomas de busca</div><div class="kpi-value">3</div><div class="kpi-desc">Português, inglês e espanhol</div></div>'
+        f'</div>'
+    )
 
-# =========================
+
 # INTERFACE
-# =========================
+templates = load_templates()
+favorites = load_favorites()
+history = load_search_history()
 
 render_hero()
-templates = load_templates()
-favorites = load_favorites()
-history = load_search_history()
 render_kpis(templates, favorites, history)
-
-templates = load_templates()
-favorites = load_favorites()
-history = load_search_history()
 
 with st.expander("Guia rápido de uso"):
     st.markdown("""
@@ -1109,14 +1075,12 @@ with st.expander("Biblioteca do projeto"):
 
 st.divider()
 
-st.markdown("""
-<div class="section-card">
-    <div class="section-title">1. Entrada</div>
-    <div class="section-subtitle">
-        Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.
-    </div>
-</div>
-""")
+render_html(
+    '<div class="section-card">'
+    '<div class="section-title">1. Entrada</div>'
+    '<div class="section-subtitle">Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.</div>'
+    '</div>'
+)
 
 material_title = st.text_input(
     "Título do material",
@@ -1130,13 +1094,12 @@ input_text = st.text_area(
     placeholder="Ex.: Depois do recreio, guarde o material e sente-se em roda.",
 )
 
-st.markdown(
-    '<div class="section-card">'
-    '<div class="section-title">1. Entrada</div>'
-    '<div class="section-subtitle">Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.</div>'
-    '</div>',
-    unsafe_allow_html=True
+render_html(
+    '<div class="info-banner">'
+    'Dica: frases curtas e objetivas costumam gerar sugestões pictográficas mais consistentes e fáceis de revisar.'
+    '</div>'
 )
+
 if st.button("Gerar sugestões", use_container_width=True):
     if not input_text.strip():
         st.error("Digite um texto primeiro.")
@@ -1152,21 +1115,19 @@ if st.button("Gerar sugestões", use_container_width=True):
 
 if "segments" in st.session_state:
     st.divider()
-    st.markdown("""
-    <div class="section-card">
-        <div class="section-title">2. Revisão dos segmentos</div>
-        <div class="section-subtitle">
-            Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.
-        </div>
-    </div>, unsafe_allow_html=True
-    """)
+    render_html(
+        '<div class="section-card">'
+        '<div class="section-title">2. Revisão dos segmentos</div>'
+        '<div class="section-subtitle">Revise cada segmento, escolha o modo de exibição e refine a busca apenas quando precisar.</div>'
+        '</div>'
+    )
 
     segments = st.session_state["segments"]
     edited_segments = []
 
     for idx, seg in enumerate(segments):
         with st.container(border=True):
-            st.markdown(f"<div class='segment-chip'>Segmento {idx + 1}</div>", unsafe_allow_html=True)
+            render_html(f'<div class="segment-chip">Segmento {idx + 1}</div>')
             st.markdown(f"### {seg.get('display_text', seg['original_text'])}")
             st.caption(f"Original: {seg['original_text']}")
 
@@ -1313,20 +1274,18 @@ if "segments" in st.session_state:
     st.session_state["original_text"] = input_text
 
     st.divider()
-    st.markdown("""
-    <div class="section-card">
-        <div class="section-title">3. Prévia final</div>
-        <div class="section-subtitle">
-            Visualize como o material será apresentado antes de salvar ou exportar.
-        </div>
-    </div>, unsafe_allow_html=True
-    """)
+    render_html(
+        '<div class="section-card">'
+        '<div class="section-title">3. Prévia final</div>'
+        '<div class="section-subtitle">Visualize como o material será apresentado antes de salvar ou exportar.</div>'
+        '</div>'
+    )
 
     preview_text = render_phrase_preview(edited_segments)
     st.markdown("**Estrutura textual final**")
     st.write(preview_text if preview_text else "_Nenhum segmento visível na saída final._")
 
-    st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
+    st.markdown("**Prévia visual**")
     visible_segments = [seg for seg in edited_segments if segment_mode_to_flags(seg.get("segment_mode", "Texto apenas"))[1]]
 
     for start in range(0, len(visible_segments), 2):
@@ -1359,15 +1318,12 @@ if "segments" in st.session_state:
     pdf_board_bytes = generate_board_pdf(material_title, selected_only) if selected_only else b""
 
     st.divider()
-    st.markdown(
-    '<div class="section-card">'
-    '<div class="section-title">1. Entrada</div>'
-    '<div class="section-subtitle">Escreva o conteúdo base que será transformado em material acessível com apoio pictográfico.</div>'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-    st.markdown("<div class='preview-panel'><strong>Prévia visual</strong></div>", unsafe_allow_html=True)
+    render_html(
+        '<div class="section-card">'
+        '<div class="section-title">4. Salvar e exportar</div>'
+        '<div class="section-subtitle">Salve como modelo ou exporte em formatos adequados para uso pedagógico e impressão.</div>'
+        '</div>'
+    )
 
     save_col, export_col1, export_col2 = st.columns(3)
 
@@ -1433,4 +1389,8 @@ if "segments" in st.session_state:
         )
 
 st.divider()
-st.markdown("</div>", unsafe_allow_html=True)
+render_html(
+    '<div class="small-muted">'
+    'Plataforma em evolução para produção de materiais acessíveis com pictogramas, busca multilíngue e exportação pedagógica em múltiplos formatos.'
+    '</div>'
+)
