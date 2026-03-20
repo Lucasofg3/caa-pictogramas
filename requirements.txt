@@ -1,4 +1,5 @@
-streamlit
-requests
-python-dotenv
-fpdf2
+streamlit>=1.55.0
+requests>=2.32.0
+fpdf2>=2.7.9
+python-dotenv>=1.0.1
+spacy>=3.8.0
